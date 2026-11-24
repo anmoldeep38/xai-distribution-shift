@@ -1,0 +1,9 @@
+data/
+checkpoints/
+runs/
+*.npy
+*.pt
+*.tar
+__pycache__/
+.ipynb_checkpoints/
+.venv/
