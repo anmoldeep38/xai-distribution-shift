@@ -159,6 +159,7 @@ tr.key td { background: color-mix(in srgb, var(--c-analysis) 8%, transparent); }
 .week.done { border-left-color: var(--c-analysis); }
 .week.done .wk { color: var(--c-analysis); }
 .week .result { margin-top: 8px; font-size: .85rem; color: var(--c-analysis); font-weight: 600; }
+.week .detail { font-size: .84rem; color: var(--muted); margin: 4px 0 8px; line-height: 1.5; }
 
 /* checklist */
 .check { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
@@ -224,7 +225,7 @@ footer { margin-top: 64px; padding: 28px 0 48px; border-top: 1px solid var(--bor
 <!-- ============ HERO ============ -->
 <div class="hero">
   <div class="wrap">
-    <div class="eyebrow"><span class="pulse"></span> MSc research project · Weeks 1–3 done · Week 4 next</div>
+    <div class="eyebrow"><span class="pulse"></span> MSc research project · protocol frozen &amp; public · Weeks 1–4 done · Weeks 5–6 in progress</div>
     <h1>Explainable AI Under <span class="grad">Distribution Shift</span></h1>
     <p class="subtitle">When Does Heatmap Drift Add Value for Error Detection? An Empirical Study on CIFAR-10-C</p>
     <p class="q">An empirical study under distribution shift on CIFAR-10-C. When an image classifier sees blurred, noisy or foggy images, do its explanations change in a way that tells us something about its mistakes that its confidence score doesn't already say?</p>
@@ -235,6 +236,7 @@ footer { margin-top: 64px; padding: 28px 0 48px; border-top: 1px solid var(--bor
       <span class="badge" style="--c:var(--c-xai)">Integrated Gradients</span>
       <span class="badge" style="--c:var(--c-xai)">Grad-CAM</span>
       <span class="badge" style="--c:var(--c-drift)">Explanation drift</span>
+      <a class="badge" href="https://github.com/anmoldeep38/xai-distribution-shift" target="_blank" rel="noopener" style="--c:var(--c-analysis); text-decoration:none">◆ GitHub — public repo</a>
       <span class="badge" style="--c:var(--c-analysis)">Pre-registered</span>
       <span class="badge" style="--c:var(--c-write)">12 weeks</span>
     </div>
@@ -563,9 +565,10 @@ footer { margin-top: 64px; padding: 28px 0 48px; border-top: 1px solid var(--bor
   <p class="lead">Colour-coded stages with weekly tasks and deliverables. Priority rule: a complete, defensible ResNet-18 study comes before adding more models or datasets.</p>
 
   <div class="stage-block" style="--c:var(--c-setup)">
-    <div class="stage-head"><h3>Stage 0 · Setup &amp; pre-registration</h3><span class="diff">difficulty 2/10</span></div>
+    <div class="stage-head"><h3>Stage 0 · Setup &amp; pre-registration</h3><span class="diff">difficulty 2/10</span> <a href="stage0.html" style="font-size:.8rem;font-weight:700;color:var(--c-setup)">detailed write-up →</a></div>
     <div class="weeks">
       <div class="week done"><div class="wk">WEEK 1 <span class="done-pill">DONE</span></div><h4>Protocol, literature, baseline kick-off</h4>
+        <p class="detail">The whole study is planned and locked <i>before</i> any experiment runs, so nothing can be cherry-picked afterwards. We wrote the hypotheses, the exact metrics and the drift definition, then published them.</p>
         <ul><li>Verify the anchor DOI</li><li>Write the pre-registration README</li><li>Build the prior-work matrix</li><li>Set up environment, download data</li></ul>
         <div class="deliv"><b>Deliverable:</b> frozen research protocol, public repo</div>
         <div class="result">✓ Protocol + prior-work matrix done; 2 closest papers read</div></div>
@@ -573,9 +576,10 @@ footer { margin-top: 64px; padding: 28px 0 48px; border-top: 1px solid var(--bor
   </div>
 
   <div class="stage-block" style="--c:var(--c-base)">
-    <div class="stage-head"><h3>Stage 1 · Baseline model</h3><span class="diff">difficulty 4/10</span></div>
+    <div class="stage-head"><h3>Stage 1 · Baseline model</h3><span class="diff">difficulty 4/10</span> <a href="stage1.html" style="font-size:.8rem;font-weight:700;color:var(--c-base)">detailed write-up →</a></div>
     <div class="weeks">
       <div class="week done"><div class="wk">WEEK 2 <span class="done-pill">DONE</span></div><h4>CIFAR-10 ResNet-18 baseline</h4>
+        <p class="detail">Teach a standard image model to recognise the 10 object types. Three copies are trained with different randomness, so a later finding can't be a fluke of one lucky run.</p>
         <ul><li>Train 40 epochs, target ~93% clean test accuracy</li><li>Repeat with seeds 0, 1, 2</li><li>Log curves to <code>runs/*.json</code></li></ul>
         <div class="deliv"><b>Deliverable:</b> 3 trained checkpoints</div>
         <div class="result">✓ 3 seeds trained · test acc 93.9 / 94.3 / 94.0% (mean 94.1%)</div></div>
@@ -583,9 +587,10 @@ footer { margin-top: 64px; padding: 28px 0 48px; border-top: 1px solid var(--bor
   </div>
 
   <div class="stage-block" style="--c:var(--c-shift)">
-    <div class="stage-head"><h3>Stage 2 · Distribution shift</h3><span class="diff">difficulty 5/10</span></div>
+    <div class="stage-head"><h3>Stage 2 · Distribution shift</h3><span class="diff">difficulty 5/10</span> <a href="stage2.html" style="font-size:.8rem;font-weight:700;color:var(--c-shift)">detailed write-up →</a></div>
     <div class="weeks">
       <div class="week done"><div class="wk">WEEK 3 <span class="done-pill">DONE</span></div><h4>CIFAR-10-C pipeline</h4>
+        <p class="detail">Show the trained model the same pictures but blurred, noisy or foggy, and measure how far accuracy falls. That fall is the "distribution shift" the whole project studies.</p>
         <ul><li>Accuracy for all 75 conditions</li><li>Confidence, entropy, ECE, Brier per image</li><li>Save one per-image results table</li></ul>
         <div class="deliv"><b>Deliverable:</b> corruption benchmark table</div>
         <div class="result">✓ CIFAR-10-C verified · gaussian noise acc 94→26% over severity 1→5</div></div>
@@ -593,23 +598,29 @@ footer { margin-top: 64px; padding: 28px 0 48px; border-top: 1px solid var(--bor
   </div>
 
   <div class="stage-block" style="--c:var(--c-xai)">
-    <div class="stage-head"><h3>Stage 3 · Explainability</h3><span class="diff">difficulty 5–6/10</span></div>
+    <div class="stage-head"><h3>Stage 3 · Explainability</h3><span class="diff">difficulty 5–6/10</span> <a href="stage3.html" style="font-size:.8rem;font-weight:700;color:var(--c-xai)">detailed write-up →</a></div>
     <div class="weeks">
-      <div class="week now"><div class="wk">WEEK 4 <span class="now-pill">NOW</span></div><h4>Integrated Gradients &amp; Grad-CAM</h4>
+      <div class="week done"><div class="wk">WEEK 4 <span class="done-pill">DONE</span></div><h4>Integrated Gradients &amp; Grad-CAM</h4>
+        <p class="detail">For each prediction, draw a heatmap of which pixels the model used — two different ways. A sanity check confirms the heatmaps actually depend on the model, not just the image's edges.</p>
         <ul><li>Fixed stratified image subset</li><li>Predicted-class and true-class targets</li><li>Sanity check: randomise the model weights</li></ul>
-        <div class="deliv"><b>Deliverable:</b> heatmaps on disk</div></div>
+        <div class="deliv"><b>Deliverable:</b> heatmaps on disk</div>
+        <div class="result">✓ IG + Grad-CAM code &amp; sanity check done — Grad-CAM faithful (ρ→0.23), IG edge-detector caveat (ρ≈0.41)</div></div>
     </div>
   </div>
 
   <div class="stage-block" style="--c:var(--c-drift)">
     <div class="stage-head"><h3>Stage 4 · Explanation reliability</h3><span class="diff">difficulty 8/10</span></div>
     <div class="weeks">
-      <div class="week"><div class="wk">WEEK 5</div><h4>Local drift metrics</h4>
+      <div class="week now"><div class="wk">WEEK 5 <span class="now-pill">NOW</span></div><h4>Local drift metrics</h4>
+        <p class="detail">Turn each heatmap into a single number: how much it changes when the image is nudged slightly. Also record a simpler "does the answer change" baseline, to test whether the heatmap adds anything.</p>
         <ul><li>Spearman, cosine, normalised L1</li><li>Deployable drift (perturbation-based)</li><li>Diagnostic drift (clean vs corrupted)</li></ul>
-        <div class="deliv"><b>Deliverable:</b> per-image drift dataset</div></div>
+        <div class="deliv"><b>Deliverable:</b> per-image drift dataset</div>
+        <div class="result" style="color:var(--c-drift)">◐ drift.py + compute_drift.py written &amp; tested · Grad-CAM drift generating now (seed 0), IG pass on Colab next</div></div>
       <div class="week"><div class="wk">WEEK 6</div><h4>Batch-level drift</h4>
+        <p class="detail">Zoom out from single images: does the average heatmap of a whole corruption type drift away from clean? That's a batch-level alarm, never used to judge individual images.</p>
         <ul><li>Clean reference attribution profile</li><li>Jensen–Shannon drift for each condition</li></ul>
-        <div class="deliv"><b>Deliverable:</b> aggregate drift dataset</div></div>
+        <div class="deliv"><b>Deliverable:</b> aggregate drift dataset</div>
+        <div class="result" style="color:var(--c-drift)">◐ batch_drift.py written — runs after the per-image drift data lands</div></div>
     </div>
   </div>
 
@@ -617,15 +628,19 @@ footer { margin-top: 64px; padding: 28px 0 48px; border-top: 1px solid var(--bor
     <div class="stage-head"><h3>Stage 5 · Research investigation</h3><span class="diff">difficulty 8/10</span></div>
     <div class="weeks">
       <div class="week"><div class="wk">WEEK 7</div><h4>Confidence &amp; severity baselines</h4>
+        <p class="detail">Build the fair yardstick — detectors that use only confidence, entropy and known severity — and split the data so a corruption type we test on was never used to tune the detector.</p>
         <ul><li>Fit E1, E2, E3, E5</li><li>Leave-one-family-out splits (halves F / H)</li></ul>
         <div class="deliv"><b>Deliverable:</b> baseline comparisons</div></div>
       <div class="week"><div class="wk">WEEK 8</div><h4>Incremental value &amp; selective prediction</h4>
+        <p class="detail">The decisive test: does adding heatmap drift beat those yardsticks at catching mistakes on <i>unseen</i> corruption types? And does rejecting low-trust predictions by drift leave fewer errors?</p>
         <ul><li>E4 vs E3 (H1), E6 vs E5 (H3), E8 vs E7 (H6)</li><li>Risk–coverage curves (H5)</li></ul>
         <div class="deliv"><b>Deliverable:</b> main results</div></div>
       <div class="week" style="--c:var(--c-gen)"><div class="wk">WEEK 9</div><h4>Generalisation</h4>
+        <p class="detail">Repeat the headline test on a different model (a Vision Transformer) and a harder dataset (CIFAR-100-C), to see whether the result survives beyond one setup.</p>
         <ul><li>ViT-Tiny with IG</li><li>CIFAR-100-C replication</li></ul>
         <div class="deliv"><b>Deliverable:</b> generalisation results</div></div>
       <div class="week"><div class="wk">WEEK 10</div><h4>Statistics &amp; ablations</h4>
+        <p class="detail">Proper statistics: repeat across the 3 seeds, put confidence intervals on every number with bootstrapping, and run all the planned ablations so each claim has an error bar.</p>
         <ul><li>Paired bootstraps across seeds</li><li>The 6 ablations</li></ul>
         <div class="deliv"><b>Deliverable:</b> statistical report</div></div>
     </div>
@@ -635,26 +650,31 @@ footer { margin-top: 64px; padding: 28px 0 48px; border-top: 1px solid var(--bor
     <div class="stage-head"><h3>Stage 6 · Writing &amp; reproducibility</h3><span class="diff">difficulty 6/10</span></div>
     <div class="weeks">
       <div class="week"><div class="wk">WEEK 11</div><h4>Figures &amp; interpretation</h4>
+        <p class="detail">Turn the numbers into clear, publication-quality figures and write up what they mean.</p>
         <ul><li>Paper-quality figures</li><li>Results and discussion sections</li></ul>
         <div class="deliv"><b>Deliverable:</b> results section</div></div>
       <div class="week"><div class="wk">WEEK 12</div><h4>Manuscript &amp; release</h4>
+        <p class="detail">Write the full paper with an honest limitations section, and tag a reproducible release so anyone can rerun the whole thing.</p>
         <ul><li>Full draft, limitations section</li><li>Reproducible scripts, tagged release</li></ul>
         <div class="deliv"><b>Deliverable:</b> research manuscript</div></div>
     </div>
   </div>
 
-  <h3 style="margin-top:28px">Week 1 checklist · actual status</h3>
+  <h3 style="margin-top:28px">Progress checklist · actual status</h3>
   <ul class="check">
     <li class="done"><span class="st">✓</span><span>Anchor DOI verified through Crossref (Discover AI 6, 890, Aug 2026)</span></li>
     <li class="done"><span class="st">✓</span><span>Pre-registration README drafted (H1–H6, E1–E8, metrics, change log)</span></li>
     <li class="done"><span class="st">✓</span><span><code>prior_work.md</code> comparison matrix with 12 papers</span></li>
     <li class="done"><span class="st">✓</span><span>Training and CIFAR-10-C checking scripts written; model passed a GPU smoke test (11.17M parameters)</span></li>
-    <li class="todo"><span class="st"></span><span>Install Git, create the public GitHub repo, first push (this freezes the protocol)</span></li>
+    <li class="done"><span class="st">✓</span><span>Git installed; public repo created and first push done — <b>protocol frozen 2026-11-25</b> (<a href="https://github.com/anmoldeep38/xai-distribution-shift">github.com/anmoldeep38/xai-distribution-shift</a>)</span></li>
     <li class="done"><span class="st">✓</span><span>Pre-freeze amendments: confidence + entropy baseline, operational drift definition, batch-drift definition, leave-one-family-out with image-identity split, statistics plan</span></li>
     <li class="done"><span class="st">✓</span><span>Checked the closest papers: Kalita &amp; Singh read in full; Hovakimyan &amp; Bravo abstract and code checked (PDF body still unread)</span></li>
     <li class="todo"><span class="st"></span><span>Google Scholar / arXiv pass for further prior work</span></li>
     <li class="done"><span class="st">✓</span><span>Trained 3 ResNet-18 seeds — clean test acc 93.9 / 94.3 / 94.0% (mean 94.1%, all on a Colab T4)</span></li>
     <li class="done"><span class="st">✓</span><span>Downloaded and verified CIFAR-10-C — labels aligned, accuracy falls 94→26% across severity</span></li>
+    <li class="done"><span class="st">✓</span><span>Week 4 heatmap code written &amp; tested (<code>subset.py</code>, <code>attributions.py</code>, <code>compute_attributions.py</code>)</span></li>
+    <li class="done"><span class="st">✓</span><span>Sanity check run — Grad-CAM model-faithful (ρ→0.23); IG partly edge-detector (ρ≈0.41), to be reported as a caveat</span></li>
+    <li class="todo"><span class="st"></span><span>Generate &amp; save clean heatmaps for all 3 seeds, then start Week 5 drift metrics</span></li>
   </ul>
 </section>
 
@@ -675,10 +695,10 @@ footer { margin-top: 64px; padding: 28px 0 48px; border-top: 1px solid var(--bor
         <line x1="720" y1="34" x2="720" y2="330"/><line x1="785" y1="34" x2="785" y2="330"/><line x1="850" y1="34" x2="850" y2="330"/><line x1="915" y1="34" x2="915" y2="330"/><line x1="980" y1="34" x2="980" y2="330"/>
       </g>
       <!-- current week marker -->
-      <rect x="200" y="34" width="195" height="296" fill="var(--c-analysis)" opacity=".10"/>
-      <rect x="395" y="34" width="65" height="296" fill="var(--c-xai)" opacity=".12"/>
-      <text x="427" y="325" text-anchor="middle" class="lbl t-b" fill="var(--c-xai)">now</text>
-      <text x="297" y="325" text-anchor="middle" class="lbl t-b" fill="var(--c-analysis)">done</text>
+      <rect x="200" y="34" width="260" height="296" fill="var(--c-analysis)" opacity=".10"/>
+      <rect x="460" y="34" width="65" height="296" fill="var(--c-drift)" opacity=".12"/>
+      <text x="492" y="325" text-anchor="middle" class="lbl t-b" fill="var(--c-drift)">now</text>
+      <text x="330" y="325" text-anchor="middle" class="lbl t-b" fill="var(--c-analysis)">done</text>
 
       <g font-size="13">
         <text x="12" y="62">Setup &amp; protocol</text><rect x="204" y="46" width="57" height="26" rx="7" fill="var(--c-setup)"/>
@@ -780,8 +800,11 @@ footer { margin-top: 64px; padding: 28px 0 48px; border-top: 1px solid var(--bor
 └── src/
     ├── models.py        <span class="c"># ResNet-18 (CIFAR), normalises inside</span>
     ├── data.py          <span class="c"># loaders, 45k/5k split, CIFAR-10-C</span>
-    ├── train_resnet18.py
-    └── verify_cifar10c.py</pre>
+    ├── train_resnet18.py <span class="c"># Week 2 — baseline training</span>
+    ├── verify_cifar10c.py <span class="c"># Week 3 — corruption check</span>
+    ├── subset.py        <span class="c"># Week 4 — fixed 2k subset, F/H split</span>
+    ├── attributions.py  <span class="c"># Week 4 — IG + Grad-CAM maps</span>
+    └── compute_attributions.py <span class="c"># Week 4 — runner + sanity check</span></pre>
     </div>
     <div>
       <h3>Week 1 commands</h3>

@@ -33,6 +33,8 @@ def load_model(ckpt_path, device):
     ckpt = torch.load(ckpt_path, map_location=device)
     model.load_state_dict(ckpt["model"])
     model.eval()
+    for p in model.parameters():
+        p.requires_grad_(False)
     return model, ckpt.get("args", {}).get("seed", "?")
 
 

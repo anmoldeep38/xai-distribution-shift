@@ -1,6 +1,10 @@
 data/
 checkpoints/
 runs/
+drift/
+attributions/
+drift_smoketest/
+attributions_smoketest/
 *.npy
 *.pt
 *.tar

@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stage 0 — Setup &amp; Pre-registration</title>
+<meta name="description" content="Detailed write-up of Stage 0 (Week 1): the frozen pre-registration for the CIFAR-10-C heatmap-drift study.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f6f7fb; --surface: #ffffff; --surface-2: #f1f3f9; --text: #0f172a; --muted: #5b6478;
+  --border: #e2e6ef; --shadow: 0 1px 2px rgba(15,23,42,.05), 0 8px 24px rgba(15,23,42,.06);
+  --c-setup: #6366f1; --c-base: #0d9488; --c-shift: #d97706; --c-xai: #db2777;
+  --c-drift: #7c3aed; --c-analysis: #16a34a; --c-gen: #0284c7; --c-write: #475569; --c-risk: #dc2626;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+  --sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --sec: var(--c-setup);
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0a0f1e; --surface: #111831; --surface-2: #18213d; --text: #e7eaf6; --muted: #9aa4c0;
+  --border: #253055; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  --c-setup: #818cf8; --c-base: #2dd4bf; --c-shift: #fbbf24; --c-xai: #f472b6;
+  --c-drift: #a78bfa; --c-analysis: #4ade80; --c-gen: #38bdf8; --c-write: #94a3b8; --c-risk: #f87171;
+}}
+:root[data-theme="dark"] {
+  --bg: #0a0f1e; --surface: #111831; --surface-2: #18213d; --text: #e7eaf6; --muted: #9aa4c0;
+  --border: #253055; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  --c-setup: #818cf8; --c-base: #2dd4bf; --c-shift: #fbbf24; --c-xai: #f472b6;
+  --c-drift: #a78bfa; --c-analysis: #4ade80; --c-gen: #38bdf8; --c-write: #94a3b8; --c-risk: #f87171;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 16px; line-height: 1.65; -webkit-font-smoothing: antialiased; }
+a { color: var(--c-setup); }
+code, .mono { font-family: var(--mono); font-size: .88em; }
+.wrap { max-width: 920px; margin: 0 auto; padding: 0 16px; }
+section { padding: 44px 0 4px; }
+h1, h2, h3 { line-height: 1.2; margin: 0 0 .5em; }
+h2 { font-size: clamp(1.3rem, 3vw, 1.7rem); font-weight: 800; letter-spacing: -.01em; display: flex; align-items: center; gap: .6rem; }
+h2 .num { font-size: .78rem; font-weight: 700; color: #fff; background: var(--sec); border-radius: 8px; padding: 4px 9px; }
+h3 { font-size: 1.05rem; font-weight: 700; margin-top: 1.2em; }
+p { margin: .6em 0; }
+.lead { color: var(--muted); max-width: 760px; }
+.topbar { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+.topbar .wrap { display: flex; align-items: center; gap: 12px; height: 54px; }
+.topbar a.back { color: var(--muted); text-decoration: none; font-weight: 600; font-size: .9rem; }
+.topbar a.back:hover { color: var(--text); }
+.spacer { flex: 1; }
+.theme-btn { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 10px; width: 36px; height: 36px; cursor: pointer; font-size: 1rem; }
+.hero { padding: 48px 0 20px; position: relative; overflow: hidden; }
+.hero::before { content: ""; position: absolute; inset: -40% -10% auto -10%; height: 380px; z-index: -1;
+  background: radial-gradient(40% 60% at 20% 30%, color-mix(in srgb, var(--c-setup) 26%, transparent), transparent 70%), radial-gradient(35% 55% at 80% 20%, color-mix(in srgb, var(--c-drift) 18%, transparent), transparent 70%); filter: blur(12px); }
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--c-setup); }
+.chip { font-size: .72rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--c-analysis); color: #fff; }
+.hero h1 { font-size: clamp(1.7rem, 4.5vw, 2.6rem); font-weight: 800; letter-spacing: -.02em; margin: 12px 0 10px; }
+.hero h1 .grad { background: linear-gradient(90deg, var(--c-setup), var(--c-drift)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 18px; color: var(--muted); font-size: .9rem; margin-top: 10px; }
+.meta b { color: var(--text); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; box-shadow: var(--shadow); margin: 14px 0; }
+.card.accent { border-left: 4px solid var(--sec); }
+.grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.tag { display: inline-block; font-size: .7rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--c); background: color-mix(in srgb, var(--c) 13%, transparent); padding: 3px 8px; border-radius: 6px; }
+.callout { --c: var(--c-shift); border-left: 4px solid var(--c); background: color-mix(in srgb, var(--c) 9%, var(--surface)); border-radius: 12px; padding: 12px 16px; margin: 14px 0; font-size: .95rem; }
+.callout strong { color: var(--c); }
+.table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); box-shadow: var(--shadow); margin: 12px 0; }
+table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: .9rem; }
+th, td { padding: 10px 13px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { background: var(--surface-2); font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+tr.key td { background: color-mix(in srgb, var(--c-analysis) 9%, transparent); }
+.chk { color: var(--c-analysis); font-weight: 700; } .no { color: var(--muted); }
+ul.clean { list-style: none; padding: 0; margin: .5em 0; }
+ul.clean li { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; border-bottom: 1px dashed var(--border); font-size: .94rem; }
+ul.clean li:last-child { border-bottom: 0; }
+ul.clean .ic { flex: none; color: var(--c-analysis); font-weight: 800; }
+dl.freeze { margin: 0; }
+dl.freeze > div { display: grid; grid-template-columns: 180px 1fr; gap: 6px 16px; padding: 9px 0; border-bottom: 1px dashed var(--border); font-size: .92rem; }
+dl.freeze > div:last-child { border-bottom: 0; }
+dl.freeze dt { font-weight: 700; color: var(--c-drift); }
+dl.freeze dd { margin: 0; color: var(--muted); }
+.formula { font-family: var(--mono); font-size: .95rem; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin: 10px 0; overflow-x: auto; }
+.timeline { border-left: 3px solid color-mix(in srgb, var(--c-setup) 35%, transparent); margin-left: 8px; padding-left: 20px; }
+.timeline .ev { position: relative; padding: 6px 0 14px; }
+.timeline .ev::before { content: ""; position: absolute; left: -27px; top: 10px; width: 12px; height: 12px; border-radius: 50%; background: var(--c-setup); box-shadow: 0 0 0 4px var(--bg); }
+.timeline .d { font-family: var(--mono); font-size: .78rem; color: var(--c-setup); font-weight: 600; }
+.pill { font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; color: #fff; background: var(--c, var(--c-setup)); }
+footer { margin-top: 48px; padding: 24px 0 44px; border-top: 1px solid var(--border); color: var(--muted); font-size: .86rem; }
+@media (max-width: 560px) { dl.freeze > div { grid-template-columns: 1fr; gap: 2px; } }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="back" href="roadmap.html">← Roadmap</a>
+    <div class="spacer"></div>
+    <span class="chip">DONE</span>
+    <button class="theme-btn" id="themeBtn" aria-label="Toggle theme">◐</button>
+  </div>
+</header>
+
+<main>
+<div class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Stage 0 · Week 1 · difficulty 2/10</div>
+    <h1>Setup &amp; <span class="grad">Pre-registration</span></h1>
+    <p class="lead">Before touching a single experiment, the entire study is written down and locked. This stage turns a vague idea into a falsifiable, public research protocol — so the results that come later can be trusted.</p>
+    <div class="meta">
+      <span><b>Deliverable:</b> frozen protocol + public repo</span>
+      <span><b>Frozen:</b> 2026-11-25</span>
+      <span><b>Repo:</b> <a href="https://github.com/anmoldeep38/xai-distribution-shift">github.com/anmoldeep38/xai-distribution-shift</a></span>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- WHY -->
+<section>
+  <h2><span class="num">1</span> Why pre-register at all?</h2>
+  <p class="lead">A pre-registration is a time-stamped, public document that fixes the hypotheses, the exact way they'll be measured, and the design choices — <em>before</em> any result is seen.</p>
+  <div class="grid">
+    <div class="card accent"><span class="tag" style="--c:var(--c-risk)">The problem</span><h3 style="margin-top:8px">Cherry-picking</h3><p style="color:var(--muted)">With enough metrics and splits, you can almost always find <em>some</em> combination that looks like a positive result. Deciding what counts as success after seeing the data is how false findings get published.</p></div>
+    <div class="card accent"><span class="tag" style="--c:var(--c-analysis)">The fix</span><h3 style="margin-top:8px">Decide first, then test</h3><p style="color:var(--muted)">The primary hypothesis, the single metric that judges it, and the pass/fail rule are all committed up front and pushed to a public Git commit. The commit's timestamp is the proof.</p></div>
+  </div>
+  <div class="callout" style="--c:var(--c-setup)"><strong>In this project:</strong> the protocol lives in <code>README.md</code>, and the first public commit (<code>82808ae</code>, 2026-11-25) <em>is</em> the pre-registration. Any later change to the primary hypothesis, primary metric or evaluation rule must be logged with a date and reason — nothing is edited silently.</div>
+</section>
+
+<!-- RESEARCH QUESTION -->
+<section>
+  <h2><span class="num">2</span> The research question</h2>
+  <p class="lead">When an image classifier meets corrupted images (blur, noise, fog…), its heatmaps — the picture of where it "looked" — change. The question is whether that change is <em>useful</em>: does it warn us about mistakes that the model's confidence score doesn't already reveal?</p>
+  <div class="card accent" style="--sec:var(--c-setup)">
+    <span class="tag" style="--c:var(--c-setup)">Primary — RQ1</span>
+    <p style="margin-top:8px">Does perturbation-based local <b>heatmap instability</b> provide incremental information for detecting individual classification errors under image distribution shift, <b>beyond maximum-softmax confidence and predictive entropy</b>, and does it <b>generalise to unseen corruption families</b>?</p>
+  </div>
+  <div class="card accent" style="--sec:var(--c-gen)">
+    <span class="tag" style="--c:var(--c-gen)">Secondary — RQ2</span>
+    <p style="margin-top:8px">Does aggregate <b>attribution-profile drift</b> track condition-level model degradation, and does it provide information complementary to conventional performance indicators?</p>
+  </div>
+</section>
+
+<!-- ANCHOR PAPER -->
+<section>
+  <h2><span class="num">3</span> The anchor paper</h2>
+  <p class="lead">The study builds on, and stress-tests, one recent paper from the tabular machine-learning world.</p>
+  <div class="card">
+    <p style="margin-top:0"><b>Masood et&nbsp;al. (2026)</b> — <i>Explanation audits reveal silent failures of machine learning models under distribution shift.</i> Discover Artificial Intelligence 6, 890. <a href="https://doi.org/10.1007/s44163-026-02012-6">doi:10.1007/s44163-026-02012-6</a> <span style="color:var(--muted)">(verified via Crossref, 2026-11-23)</span></p>
+    <p>They separated two kinds of explanation monitoring on tabular data:</p>
+    <ul class="clean">
+      <li><span class="ic" style="color:var(--c-drift)">A</span><span><b>Local volatility</b> — does one row's attribution change under a small perturbation? A per-sample score. <b>Weak error detector: AUROC 0.575</b> vs 0.866 for confidence.</span></li>
+      <li><span class="ic" style="color:var(--c-gen)">B</span><span><b>Batch drift</b> — does the whole batch's average attribution move away from clean? One score per batch. <b>Tracked error well: Spearman 0.681</b> with realised error.</span></li>
+    </ul>
+    <p style="color:var(--muted);margin-bottom:0">This project asks whether that <b>local-vs-batch distinction transfers to computer vision</b> — a genuinely different setting (images, CNNs/ViTs, natural corruptions).</p>
+  </div>
+</section>
+
+<!-- HYPOTHESES -->
+<section>
+  <h2><span class="num">4</span> Hypotheses</h2>
+  <p class="lead">Each is written so it can fail. H1 is the only confirmatory test; H2–H6 are secondary.</p>
+  <div class="card accent" style="--sec:var(--c-analysis)">
+    <span class="pill" style="--c:var(--c-analysis)">PRIMARY · H1</span>
+    <h3 style="margin-top:10px">Local heatmap drift adds error-detection value on unseen corruptions</h3>
+    <p style="color:var(--muted)">Operational local drift adds information for detecting individual errors on <b>unseen corruption families</b>, beyond confidence and entropy.</p>
+    <p style="margin-bottom:0"><b>Test:</b> E4 vs E3, leave-one-corruption-family-out. <b>Supported only if</b> the pooled held-out ΔAUROC has a cluster-bootstrap 95% CI excluding zero <b>and</b> is positive in at least 3 of the 4 held-out families (ResNet-18, IG, predicted class, 3 seeds).</p>
+  </div>
+  <div class="grid">
+    <div class="card"><span class="tag" style="--c:var(--c-gen)">H2</span><p style="margin:.5em 0 0;color:var(--muted)">Batch-level attribution drift is positively associated with condition error rate.</p></div>
+    <div class="card"><span class="tag" style="--c:var(--c-shift)">H3</span><p style="margin:.5em 0 0;color:var(--muted)">Drift still helps after accounting for corruption severity (E6 vs E5).</p></div>
+    <div class="card"><span class="tag" style="--c:var(--c-xai)">H4</span><p style="margin:.5em 0 0;color:var(--muted)">The value of drift differs between Integrated Gradients and Grad-CAM.</p></div>
+    <div class="card"><span class="tag" style="--c:var(--c-drift)">H5</span><p style="margin:.5em 0 0;color:var(--muted)">Confidence + drift gives lower selective risk than confidence alone (90/80/70/60% coverage).</p></div>
+    <div class="card"><span class="tag" style="--c:var(--c-setup)">H6</span><p style="margin:.5em 0 0;color:var(--muted)">Drift adds information beyond output-level consistency — i.e. it is more than output instability (E8 vs E7).</p></div>
+  </div>
+</section>
+
+<!-- EXPERIMENTS -->
+<section>
+  <h2><span class="num">5</span> The eight monitors (E1–E8)</h2>
+  <p class="lead">Each is a small logistic model predicting "is this prediction wrong?". Compared pairs differ by exactly one feature group, so any gain is attributable.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>ID</th><th>Inputs</th><th>Conf</th><th>Entropy</th><th>Severity</th><th>Drift</th><th>Out-consist.</th><th>Role</th></tr></thead>
+      <tbody>
+        <tr><td><b>E1</b></td><td>Confidence</td><td class="chk">✓</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td>Baseline</td></tr>
+        <tr><td><b>E2</b></td><td>Entropy</td><td class="no">–</td><td class="chk">✓</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td>Baseline</td></tr>
+        <tr><td><b>E3</b></td><td>Conf + entropy</td><td class="chk">✓</td><td class="chk">✓</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td>Conventional baseline</td></tr>
+        <tr class="key"><td><b>E4</b></td><td>Conf + entropy + drift</td><td class="chk">✓</td><td class="chk">✓</td><td class="no">–</td><td class="chk">✓</td><td class="no">–</td><td><b>H1</b> (vs E3)</td></tr>
+        <tr><td><b>E5</b></td><td>+ severity</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="no">–</td><td class="no">–</td><td>Severity control</td></tr>
+        <tr class="key"><td><b>E6</b></td><td>+ severity + drift</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="chk">✓</td><td class="no">–</td><td><b>H3</b> (vs E5)</td></tr>
+        <tr><td><b>E7</b></td><td>+ output consistency</td><td class="chk">✓</td><td class="chk">✓</td><td class="no">–</td><td class="no">–</td><td class="chk">✓</td><td>Output baseline</td></tr>
+        <tr class="key"><td><b>E8</b></td><td>+ out-consist. + drift</td><td class="chk">✓</td><td class="chk">✓</td><td class="no">–</td><td class="chk">✓</td><td class="chk">✓</td><td><b>H6</b> (vs E7)</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout"><strong>Severity is an oracle variable</strong> — unknown at deployment — so E5/E6 are controls, not deployable monitors. If drift only helps by proxying severity, E6 will not beat E5.</div>
+</section>
+
+<!-- FROZEN DECISIONS -->
+<section>
+  <h2><span class="num">6</span> Frozen design decisions</h2>
+  <p class="lead">These values are fixed before the main experiments. Changing any of them after the freeze needs a change-log entry.</p>
+
+  <h3>How "drift" is measured (operational, deployable)</h3>
+  <div class="formula">D(x) = (1/K) · Σ<sub>k</sub> &nbsp;d( A(x), A(T<sub>k</sub>(x)) )</div>
+  <dl class="freeze">
+    <div><dt>Perturbation T<sub>k</sub></dt><dd>Gaussian pixel noise, σ = 0.01 (4× milder than CIFAR-10-C's mildest noise), clipped to [0,1]</dd></div>
+    <div><dt>K (copies)</dt><dd>8, with a fixed seed per image</dd></div>
+    <div><dt>Distance d</dt><dd>1 − Spearman (primary); normalised L1 and cosine (secondary)</dd></div>
+    <div><dt>Attribution target</dt><dd>the class predicted for x (true class only as a diagnostic)</dd></div>
+    <div><dt>Primary method</dt><dd>Integrated Gradients (Captum, black baseline, 32 steps)</dd></div>
+    <div><dt>Secondary method</dt><dd>Grad-CAM (layer4, 4×4, bilinear→32×32)</dd></div>
+  </dl>
+  <div class="callout" style="--c:var(--c-risk)"><strong>Why perturbation-based:</strong> at deployment the clean version of a corrupted image doesn't exist, so drift is measured against a slightly perturbed copy of the input we <em>do</em> have. Clean-vs-corrupted drift is kept only as a diagnostic.</div>
+
+  <h3>Batch-level drift (Track B)</h3>
+  <dl class="freeze">
+    <div><dt>Profile</dt><dd>|IG map| pooled to an 8×8 grid, normalised to sum 1</dd></div>
+    <div><dt>Clean reference</dt><dd>1,000 validation images (100/class, fixed)</dd></div>
+    <div><dt>Drift</dt><dd>Jensen–Shannon distance vs the reference, 200 bootstrap batches of 500</dd></div>
+  </dl>
+
+  <h3>Data splits &amp; the leakage guard</h3>
+  <dl class="freeze">
+    <div><dt>Train / val</dt><dd>45,000 / 5,000 (seed 0); model chosen on validation only; test touched once</dd></div>
+    <div><dt>Explanation subset</dt><dd>2,000 test images (200/class), split into halves F (fit) and H (held-out) <b>by image identity</b></dd></div>
+    <div><dt>Primary evaluation</dt><dd>leave-one-corruption-family-out: fit on 3 families, test on the 4th; rotate</dd></div>
+    <div><dt>Families</dt><dd>noise · blur · weather · digital</dd></div>
+  </dl>
+
+  <h3>Statistics</h3>
+  <dl class="freeze">
+    <div><dt>Resampling</dt><dd>cluster bootstrap by image identity, 2,000 resamples</dd></div>
+    <div><dt>Seeds</dt><dd>3 training seeds; a result holding in &lt;2 of 3 is flagged unstable</dd></div>
+    <div><dt>Metrics</dt><dd>AUROC, AUPRC (+ prevalence), AURC, risk@coverage, ECE, Brier</dd></div>
+  </dl>
+</section>
+
+<!-- PRIOR WORK -->
+<section>
+  <h2><span class="num">7</span> Prior work &amp; the gap</h2>
+  <p class="lead">The two closest papers were read in full before freezing, so the novelty claim is honest.</p>
+  <div class="grid">
+    <div class="card accent" style="--sec:var(--c-risk)"><span class="tag" style="--c:var(--c-risk)">Already known</span><h3 style="margin-top:8px">Heatmaps degrade</h3><p style="color:var(--muted)">Hovakimyan &amp; Bravo (2026) show Grad-CAM maps degrade under corruption — but never use that drift to detect errors. "Degradation" can't be our claim.</p></div>
+    <div class="card accent" style="--sec:var(--c-shift)"><span class="tag" style="--c:var(--c-shift)">Neighbouring</span><h3 style="margin-top:8px">Output consistency</h3><p style="color:var(--muted)">Kalita &amp; Singh (2026) test <em>output</em>-level consistency beyond confidence on CIFAR-10-C: +0.13 AUROC on noise when seen in training, but only +0.002 on unseen noise. No saliency at all.</p></div>
+    <div class="card accent" style="--sec:var(--c-analysis)"><span class="tag" style="--c:var(--c-analysis)">Open gap</span><h3 style="margin-top:8px">Our question</h3><p style="color:var(--muted)">Does <em>heatmap</em> (not output) instability add error-detection value beyond confidence, entropy and severity — on unseen corruption families? Not answered yet.</p></div>
+  </div>
+  <div class="callout" style="--c:var(--c-analysis)"><strong>Either outcome is publishable:</strong> a negative H1 extends Kalita &amp; Singh's "doesn't generalise" result from outputs to explanations; a positive H1 shows explanations carry failure signal that outputs don't.</div>
+</section>
+
+<!-- CHANGE LOG -->
+<section>
+  <h2><span class="num">8</span> Protocol change log</h2>
+  <p class="lead">Every amendment made before the freeze, with its reason — the audit trail of the pre-registration.</p>
+  <div class="timeline">
+    <div class="ev"><div class="d">2026-11-23 · draft</div><div>Initial pre-registration written: hypotheses, metrics, drift definition, data splits.</div></div>
+    <div class="ev"><div class="d">2026-11-23 · amendment</div><div>Experiments renumbered E1–E6; added the confidence + entropy baseline (E3), so H1 (E4 vs E3) controls for <b>both</b> confidence and entropy, matching its wording.</div></div>
+    <div class="ev"><div class="d">2026-11-23 · amendment</div><div>Defined operational (perturbation-based) drift as primary; clean-vs-corrupted drift demoted to a diagnostic — the clean image isn't available at deployment.</div></div>
+    <div class="ev"><div class="d">2026-11-23 · amendment</div><div>Added leave-one-corruption-family-out evaluation and the image-identity F/H split — prompted by Kalita &amp; Singh's "doesn't generalise to unseen families" finding.</div></div>
+    <div class="ev"><div class="d">2026-11-23 · amendment</div><div>Fully specified the batch attribution profile, clean reference and JS distance; and the cluster-bootstrap statistics and H1 decision rule.</div></div>
+    <div class="ev"><div class="d">2026-11-23 · amendment</div><div>Added output-consistency features (LS, CD), experiments E7/E8 and hypothesis H6 — the nearest competing explanation for any drift gain. H1 unchanged.</div></div>
+    <div class="ev"><div class="d" style="color:var(--c-analysis)">2026-11-25 · FROZEN</div><div><b>First public commit — protocol frozen.</b> Baseline already trained (3 seeds, 94.1% mean) and CIFAR-10-C verified before freezing; no confirmatory experiment had been run.</div></div>
+  </div>
+</section>
+
+<!-- DELIVERABLES -->
+<section>
+  <h2><span class="num">9</span> What Stage 0 delivered</h2>
+  <ul class="clean">
+    <li><span class="ic">✓</span><span>Anchor DOI verified through Crossref (Discover AI 6, 890).</span></li>
+    <li><span class="ic">✓</span><span><code>README.md</code> — the full frozen protocol (H1–H6, E1–E8, metrics, splits, change log).</span></li>
+    <li><span class="ic">✓</span><span><code>prior_work.md</code> — literature matrix + verified notes on the two closest papers.</span></li>
+    <li><span class="ic">✓</span><span>Environment set up; ResNet-18, data loaders and training/verification scripts written.</span></li>
+    <li><span class="ic">✓</span><span>Git installed, public GitHub repo created, first push — <b>protocol frozen 2026-11-25</b>.</span></li>
+  </ul>
+  <div class="callout" style="--c:var(--c-setup)"><strong>Next → Stage 1 (Week 2):</strong> train the ResNet-18 baseline across 3 seeds. See the <a href="roadmap.html">full roadmap</a> for every stage.</div>
+</section>
+
+</div>
+</main>
+
+<footer>
+  <div class="wrap">Stage 0 · Setup &amp; Pre-registration · Explainable AI Under Distribution Shift · the authoritative protocol is <code>README.md</code> in the repo.</div>
+</footer>
+
+<script>
+(function () {
+  var root = document.documentElement, btn = document.getElementById('themeBtn');
+  try { var s = localStorage.getItem('roadmap-theme'); if (s) root.setAttribute('data-theme', s); } catch (e) {}
+  btn.addEventListener('click', function () {
+    var cur = root.getAttribute('data-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    var next = cur === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('roadmap-theme', next); } catch (e) {}
+  });
+})();
+</script>
+</body>
+</html>

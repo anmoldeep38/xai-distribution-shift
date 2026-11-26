@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stage 3 — Explainability</title>
+<meta name="description" content="Detailed write-up of Stage 3 (Week 4): Integrated Gradients, Grad-CAM, and the model-randomisation sanity check.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f6f7fb; --surface: #ffffff; --surface-2: #f1f3f9; --text: #0f172a; --muted: #5b6478;
+  --border: #e2e6ef; --shadow: 0 1px 2px rgba(15,23,42,.05), 0 8px 24px rgba(15,23,42,.06);
+  --c-setup: #6366f1; --c-base: #0d9488; --c-shift: #d97706; --c-xai: #db2777;
+  --c-drift: #7c3aed; --c-analysis: #16a34a; --c-gen: #0284c7; --c-write: #475569; --c-risk: #dc2626;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+  --sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --sec: var(--c-xai);
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0a0f1e; --surface: #111831; --surface-2: #18213d; --text: #e7eaf6; --muted: #9aa4c0;
+  --border: #253055; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  --c-setup: #818cf8; --c-base: #2dd4bf; --c-shift: #fbbf24; --c-xai: #f472b6;
+  --c-drift: #a78bfa; --c-analysis: #4ade80; --c-gen: #38bdf8; --c-write: #94a3b8; --c-risk: #f87171;
+}}
+:root[data-theme="dark"] {
+  --bg: #0a0f1e; --surface: #111831; --surface-2: #18213d; --text: #e7eaf6; --muted: #9aa4c0;
+  --border: #253055; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  --c-setup: #818cf8; --c-base: #2dd4bf; --c-shift: #fbbf24; --c-xai: #f472b6;
+  --c-drift: #a78bfa; --c-analysis: #4ade80; --c-gen: #38bdf8; --c-write: #94a3b8; --c-risk: #f87171;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 16px; line-height: 1.65; -webkit-font-smoothing: antialiased; }
+a { color: var(--c-xai); }
+code, .mono { font-family: var(--mono); font-size: .88em; }
+.wrap { max-width: 920px; margin: 0 auto; padding: 0 16px; }
+section { padding: 44px 0 4px; }
+h1, h2, h3 { line-height: 1.2; margin: 0 0 .5em; }
+h2 { font-size: clamp(1.3rem, 3vw, 1.7rem); font-weight: 800; letter-spacing: -.01em; display: flex; align-items: center; gap: .6rem; }
+h2 .num { font-size: .78rem; font-weight: 700; color: #fff; background: var(--sec); border-radius: 8px; padding: 4px 9px; }
+h3 { font-size: 1.05rem; font-weight: 700; margin-top: 1.2em; }
+p { margin: .6em 0; }
+.lead { color: var(--muted); max-width: 760px; }
+.topbar { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+.topbar .wrap { display: flex; align-items: center; gap: 12px; height: 54px; }
+.topbar a.back { color: var(--muted); text-decoration: none; font-weight: 600; font-size: .9rem; }
+.topbar a.back:hover { color: var(--text); }
+.spacer { flex: 1; }
+.theme-btn { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 10px; width: 36px; height: 36px; cursor: pointer; font-size: 1rem; }
+.hero { padding: 48px 0 20px; position: relative; overflow: hidden; }
+.hero::before { content: ""; position: absolute; inset: -40% -10% auto -10%; height: 380px; z-index: -1;
+  background: radial-gradient(40% 60% at 20% 30%, color-mix(in srgb, var(--c-xai) 24%, transparent), transparent 70%), radial-gradient(35% 55% at 80% 20%, color-mix(in srgb, var(--c-drift) 18%, transparent), transparent 70%); filter: blur(12px); }
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--c-xai); }
+.chip { font-size: .72rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--c-analysis); color: #fff; }
+.hero h1 { font-size: clamp(1.7rem, 4.5vw, 2.6rem); font-weight: 800; letter-spacing: -.02em; margin: 12px 0 10px; }
+.hero h1 .grad { background: linear-gradient(90deg, var(--c-xai), var(--c-drift)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 18px; color: var(--muted); font-size: .9rem; margin-top: 10px; }
+.meta b { color: var(--text); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; box-shadow: var(--shadow); margin: 14px 0; }
+.card.accent { border-left: 4px solid var(--sec); }
+.grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.g4 { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.tag { display: inline-block; font-size: .7rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--c); background: color-mix(in srgb, var(--c) 13%, transparent); padding: 3px 8px; border-radius: 6px; }
+.stat { text-align: left; } .stat .v { font-size: 1.9rem; font-weight: 800; color: var(--c, var(--c-xai)); letter-spacing: -.02em; } .stat .l { color: var(--muted); font-size: .86rem; }
+.callout { --c: var(--c-shift); border-left: 4px solid var(--c); background: color-mix(in srgb, var(--c) 9%, var(--surface)); border-radius: 12px; padding: 12px 16px; margin: 14px 0; font-size: .95rem; }
+.callout strong { color: var(--c); }
+.table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); box-shadow: var(--shadow); margin: 12px 0; }
+table { border-collapse: collapse; width: 100%; min-width: 480px; font-size: .9rem; }
+th, td { padding: 10px 13px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { background: var(--surface-2); font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+.pass { color: var(--c-analysis); font-weight: 700; } .check { color: var(--c-shift); font-weight: 700; }
+ul.clean { list-style: none; padding: 0; margin: .5em 0; }
+ul.clean li { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; border-bottom: 1px dashed var(--border); font-size: .94rem; }
+ul.clean li:last-child { border-bottom: 0; }
+ul.clean .ic { flex: none; color: var(--c-analysis); font-weight: 800; }
+dl.freeze { margin: 0; }
+dl.freeze > div { display: grid; grid-template-columns: 170px 1fr; gap: 6px 16px; padding: 9px 0; border-bottom: 1px dashed var(--border); font-size: .92rem; }
+dl.freeze > div:last-child { border-bottom: 0; }
+dl.freeze dt { font-weight: 700; color: var(--c); }
+dl.freeze dd { margin: 0; color: var(--muted); }
+.diagram { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; box-shadow: var(--shadow); overflow-x: auto; margin: 12px 0; }
+.diagram svg { display: block; width: 100%; height: auto; min-width: 480px; }
+svg text { font-family: var(--sans); fill: var(--text); } svg .mut { fill: var(--muted); }
+.legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: .85rem; color: var(--muted); margin-top: 8px; }
+.legend span::before { content: ""; display: inline-block; width: 14px; height: 3px; border-radius: 2px; margin-right: 6px; vertical-align: middle; background: var(--c); }
+footer { margin-top: 48px; padding: 24px 0 44px; border-top: 1px solid var(--border); color: var(--muted); font-size: .86rem; }
+@media (max-width: 560px) { dl.freeze > div { grid-template-columns: 1fr; gap: 2px; } }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="back" href="roadmap.html">← Roadmap</a>
+    <div class="spacer"></div>
+    <span class="chip">DONE</span>
+    <button class="theme-btn" id="themeBtn" aria-label="Toggle theme">◐</button>
+  </div>
+</header>
+
+<main>
+<div class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Stage 3 · Week 4 · difficulty 5–6/10</div>
+    <h1>Explainability — <span class="grad">the heatmaps</span></h1>
+    <p class="lead">For every prediction, draw a heatmap of which pixels the model actually used. This stage builds two kinds of heatmap — and, crucially, checks that they genuinely depend on the model before anyone trusts them.</p>
+    <div class="meta">
+      <span><b>Deliverable:</b> heatmaps + a passed sanity check</span>
+      <span><b>Methods:</b> Integrated Gradients, Grad-CAM</span>
+      <span><b>Subset:</b> 2,000 images</span>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- WHAT IS A HEATMAP -->
+<section>
+  <h2><span class="num">1</span> What is a heatmap?</h2>
+  <p class="lead">When the model says "cat", a heatmap (or "attribution map", or "saliency map") colours in the pixels that pushed it toward that answer — bright where they mattered, dark where they didn't.</p>
+  <p>The project's whole question is whether these heatmaps <em>wobble</em> in a useful way when images are corrupted. But first we need to produce them reliably, in two complementary ways, and prove they aren't just reacting to the picture regardless of the model.</p>
+</section>
+
+<!-- TWO METHODS -->
+<section>
+  <h2><span class="num">2</span> Two ways to make a heatmap</h2>
+  <div class="diagram">
+    <svg viewBox="0 0 760 150" role="img" aria-label="An image goes into the model; two methods produce two 32x32 heatmaps explaining the predicted class.">
+      <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker></defs>
+      <g font-size="12" text-anchor="middle">
+        <rect x="20" y="52" width="90" height="46" rx="9" fill="color-mix(in srgb,var(--c-shift) 16%,var(--surface))" stroke="var(--c-shift)"/><text x="65" y="72" font-weight="700">image</text><text x="65" y="88" class="mut" font-size="10">predicted class</text>
+        <rect x="160" y="52" width="110" height="46" rx="9" fill="var(--surface-2)" stroke="var(--border)"/><text x="215" y="72" font-weight="700">ResNet-18</text><text x="215" y="88" class="mut" font-size="10">frozen</text>
+        <path d="M110,75 L158,75" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#a)"/>
+        <path d="M270,66 C320,66 320,40 360,40" stroke="var(--muted)" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+        <path d="M270,84 C320,84 320,110 360,110" stroke="var(--muted)" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+        <rect x="362" y="18" width="190" height="44" rx="9" fill="color-mix(in srgb,var(--c-xai) 14%,var(--surface))" stroke="var(--c-xai)"/><text x="457" y="38" font-weight="700" fill="var(--c-xai)">Integrated Gradients</text><text x="457" y="54" class="mut" font-size="10">primary · fine-grained</text>
+        <rect x="362" y="88" width="190" height="44" rx="9" fill="color-mix(in srgb,var(--c-xai) 14%,var(--surface))" stroke="var(--c-xai)"/><text x="457" y="108" font-weight="700" fill="var(--c-xai)">Grad-CAM</text><text x="457" y="124" class="mut" font-size="10">secondary · coarse (4×4)</text>
+        <path d="M552,40 C600,40 600,66 636,66" stroke="var(--muted)" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+        <path d="M552,110 C600,110 600,84 636,84" stroke="var(--muted)" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+        <rect x="638" y="52" width="104" height="46" rx="9" fill="color-mix(in srgb,var(--c-drift) 14%,var(--surface))" stroke="var(--c-drift)"/><text x="690" y="72" font-weight="700">32×32 map</text><text x="690" y="88" class="mut" font-size="10">per image</text>
+      </g>
+    </svg>
+  </div>
+  <div class="grid">
+    <div class="card accent" style="--sec:var(--c-xai)">
+      <span class="tag" style="--c:var(--c-xai)">Primary</span>
+      <h3 style="margin-top:8px">Integrated Gradients</h3>
+      <p style="color:var(--muted)">Starts from a black image and fades up to the real one in 32 steps, adding up how sensitive the prediction is to each pixel along the way. Fine-grained, and it works on any differentiable model (so it transfers to the Vision Transformer later).</p>
+    </div>
+    <div class="card accent" style="--sec:var(--c-xai)">
+      <span class="tag" style="--c:var(--c-xai)">Secondary</span>
+      <h3 style="margin-top:8px">Grad-CAM</h3>
+      <p style="color:var(--muted)">Looks at the last convolutional block (<code>layer4</code>) and weights its 4×4 feature map by how much each region pushed the prediction up, then stretches it to 32×32. Cheap and robust, but coarse.</p>
+    </div>
+  </div>
+  <dl class="freeze" style="margin-top:8px">
+    <div><dt style="--c:var(--c-xai)">Target class</dt><dd>the class the model <b>predicted</b> (the realistic case — the true label is unknown at deployment)</dd></div>
+    <div><dt style="--c:var(--c-xai)">Map</dt><dd>absolute attribution, summed over colour channels → a non-negative 32×32 map</dd></div>
+    <div><dt style="--c:var(--c-xai)">Image subset</dt><dd>a fixed 2,000 images (200/class), split into halves <b>F</b> (fit) and <b>H</b> (held-out) by image identity</dd></div>
+  </dl>
+</section>
+
+<!-- SANITY CHECK -->
+<section>
+  <h2><span class="num">3</span> The sanity check — do the heatmaps even depend on the model?</h2>
+  <p class="lead">A heatmap can look convincing while explaining nothing. Some methods mostly trace the edges in the image and would draw the same pretty picture even for a random, untrained model. The Adebayo et&nbsp;al. (2018) test catches this.</p>
+  <div class="card">
+    <p style="margin-top:0"><b>The test:</b> take the trained model, compute its heatmaps, then <b>scramble its weights layer by layer</b> from the top down. Recompute the heatmaps each time and measure how much they still match the originals (Spearman correlation).</p>
+    <ul class="clean">
+      <li><span class="ic" style="color:var(--c-analysis)">✓</span><span><b>A trustworthy method</b> → the heatmap should fall apart as the model turns to noise (correlation drops toward 0).</span></li>
+      <li><span class="ic" style="color:var(--c-risk)">✗</span><span><b>A broken method</b> → the heatmap barely moves, proving it was never really about the model.</span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- RESULTS -->
+<section>
+  <h2><span class="num">4</span> What the sanity check found</h2>
+  <p class="lead">Run on seed 0 (64 images). Lower is better — it means the heatmap depends more on the real model.</p>
+  <div class="diagram">
+    <svg viewBox="0 0 640 300" role="img" aria-label="Spearman correlation as layers are randomised: Grad-CAM drops to about 0.2 (passes), Integrated Gradients stays around 0.4 (flagged).">
+      <g stroke="var(--border)" stroke-width="1">
+        <line x1="90" y1="40" x2="90" y2="240"/><line x1="90" y1="240" x2="610" y2="240"/>
+        <line x1="90" y1="140" x2="610" y2="140" stroke-dasharray="3 4"/>
+      </g>
+      <g font-size="11" class="mut" text-anchor="end"><text x="82" y="44">1.0</text><text x="82" y="144">0.5</text><text x="82" y="244">0.0</text></g>
+      <!-- threshold 0.30 -> y=240-0.30*200=180 -->
+      <line x1="90" y1="180" x2="610" y2="180" stroke="var(--c-risk)" stroke-width="1.5" stroke-dasharray="5 4" opacity=".7"/>
+      <text x="610" y="175" font-size="10" fill="var(--c-risk)" text-anchor="end">pass below 0.30</text>
+      <g font-size="10" class="mut" text-anchor="middle">
+        <text x="90" y="258">trained</text><text x="175" y="258">+fc</text><text x="260" y="258">+l4</text><text x="345" y="258">+l3</text><text x="430" y="258">+l2</text><text x="515" y="258">+l1</text><text x="600" y="258">+stem</text>
+      </g>
+      <!-- IG: 1.0,0.610,0.478,0.442,0.403,0.414,0.407 ; y=240-v*200 -->
+      <polyline fill="none" stroke="var(--c-xai)" stroke-width="3" points="90,40 175,118 260,144 345,152 430,159 515,157 600,159"/>
+      <g fill="var(--c-xai)"><circle cx="90" cy="40" r="4"/><circle cx="175" cy="118" r="4"/><circle cx="260" cy="144" r="4"/><circle cx="345" cy="152" r="4"/><circle cx="430" cy="159" r="4"/><circle cx="515" cy="157" r="4"/><circle cx="600" cy="159" r="4"/></g>
+      <text x="600" y="152" font-size="11" font-weight="700" fill="var(--c-xai)" text-anchor="end">IG 0.41</text>
+      <!-- Grad-CAM: 1.0,0.168,0.133,0.303,0.272,0.212,0.227 -->
+      <polyline fill="none" stroke="var(--c-analysis)" stroke-width="3" points="90,40 175,206 260,213 345,179 430,186 515,198 600,195"/>
+      <g fill="var(--c-analysis)"><circle cx="90" cy="40" r="4"/><circle cx="175" cy="206" r="4"/><circle cx="260" cy="213" r="4"/><circle cx="345" cy="179" r="4"/><circle cx="430" cy="186" r="4"/><circle cx="515" cy="198" r="4"/><circle cx="600" cy="195" r="4"/></g>
+      <text x="600" y="211" font-size="11" font-weight="700" fill="var(--c-analysis)" text-anchor="end">Grad-CAM 0.23</text>
+    </svg>
+    <div class="legend"><span style="--c:var(--c-analysis)">Grad-CAM — passes</span><span style="--c:var(--c-xai)">Integrated Gradients — flagged</span></div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Method</th><th>top layer only</th><th>fully randomised</th><th>verdict</th></tr></thead>
+      <tbody>
+        <tr><td><b>Grad-CAM</b></td><td>0.17</td><td>0.23</td><td class="pass">PASS (&lt; 0.30)</td></tr>
+        <tr><td><b>Integrated Gradients</b></td><td>0.61</td><td>0.41</td><td class="check">CHECK (≥ 0.30)</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout" style="--c:var(--c-analysis)"><strong>Grad-CAM passes</strong> — scrambling the model collapses its maps, so they genuinely reflect what the model learned.</div>
+  <div class="callout" style="--c:var(--c-shift)"><strong>Integrated Gradients is flagged — and this is not a bug.</strong> It only falls to ~0.41, which is exactly the Adebayo finding: gradient methods like IG partly behave like edge detectors and stay correlated with the image even on a random model. It's a <em>caveat to report</em>, not an error to fix — and evidence that, here, Grad-CAM is the more model-faithful map.</div>
+</section>
+
+<!-- DELIVERED -->
+<section>
+  <h2><span class="num">5</span> What Stage 3 delivered</h2>
+  <ul class="clean">
+    <li><span class="ic">✓</span><span>Heatmap code for both methods, targeting the predicted class.</span></li>
+    <li><span class="ic">✓</span><span>The fixed 2,000-image subset with the F/H leakage-guard split.</span></li>
+    <li><span class="ic">✓</span><span>The Adebayo sanity check, run and recorded — Grad-CAM faithful, IG edge-detector caveat.</span></li>
+    <li><span class="ic">✓</span><span>Code: <code>src/subset.py</code>, <code>src/attributions.py</code>, <code>src/compute_attributions.py</code>.</span></li>
+  </ul>
+  <div class="callout" style="--c:var(--c-xai)"><strong>Next → Stage 4 (Weeks 5–6):</strong> turn these heatmaps into a single "how much does it wobble?" number per image, and test whether that number catches the model's mistakes. See the <a href="roadmap.html">full roadmap</a>, or the <a href="stage2.html">Stage 2 write-up</a>.</div>
+</section>
+
+</div>
+</main>
+
+<footer>
+  <div class="wrap">Stage 3 · Explainability · Explainable AI Under Distribution Shift · sanity check after Adebayo et&nbsp;al. (2018).</div>
+</footer>
+
+<script>
+(function () {
+  var root = document.documentElement, btn = document.getElementById('themeBtn');
+  try { var s = localStorage.getItem('roadmap-theme'); if (s) root.setAttribute('data-theme', s); } catch (e) {}
+  btn.addEventListener('click', function () {
+    var cur = root.getAttribute('data-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    var next = cur === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('roadmap-theme', next); } catch (e) {}
+  });
+})();
+</script>
+</body>
+</html>

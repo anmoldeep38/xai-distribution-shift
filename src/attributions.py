@@ -45,24 +45,23 @@ def gradcam_maps(model, x, targets):
     """Grad-CAM maps on layer4, shape (N, 32, 32) float32."""
     model.eval()
     store = {}
-    h_fwd = model.layer4.register_forward_hook(lambda m, i, o: store.__setitem__("act", o))
-    h_bwd = model.layer4.register_full_backward_hook(lambda m, gi, go: store.__setitem__("grad", go[0]))
+    h = model.layer4.register_forward_hook(lambda m, i, o: store.__setitem__("act", o))
     try:
-        x = x.detach().clone()
+        x = x.detach().clone().requires_grad_(True)  # graph via input; model params stay frozen
         logits = model(x)
+        act = store["act"]                                   # (N, 512, 4, 4), requires grad
         selected = logits.gather(1, targets.view(-1, 1)).sum()
-        model.zero_grad(set_to_none=True)
-        selected.backward()
-        act = store["act"]                     # (N, 512, 4, 4)
-        grad = store["grad"]                   # (N, 512, 4, 4)
+        # autograd.grad computes the gradient and frees the graph immediately; it stores no .grad,
+        # so nothing accumulates across calls (the .backward()+hook version leaked here).
+        grad = torch.autograd.grad(selected, act)[0].detach()
+        act = act.detach()
         weights = grad.mean(dim=(2, 3), keepdim=True)        # (N, 512, 1, 1)
         cam = torch.relu((weights * act).sum(dim=1, keepdim=True))  # (N, 1, 4, 4)
         cam = F.interpolate(cam, size=(32, 32), mode="bilinear", align_corners=False)
-        return cam.squeeze(1).detach().float().cpu().numpy()  # (N, 32, 32)
+        return cam.squeeze(1).float().cpu().numpy()          # (N, 32, 32)
     finally:
-        h_fwd.remove()
-        h_bwd.remove()
-        model.zero_grad(set_to_none=True)
+        h.remove()
+        store.clear()
 
 
 def compute_maps(method, model, x, targets, ig_steps=IG_STEPS, ig_ibs=32):

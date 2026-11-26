@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stage 2 — Distribution Shift</title>
+<meta name="description" content="Detailed write-up of Stage 2 (Week 3): the CIFAR-10-C corruption benchmark and how the model's accuracy collapses under it.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f6f7fb; --surface: #ffffff; --surface-2: #f1f3f9; --text: #0f172a; --muted: #5b6478;
+  --border: #e2e6ef; --shadow: 0 1px 2px rgba(15,23,42,.05), 0 8px 24px rgba(15,23,42,.06);
+  --c-setup: #6366f1; --c-base: #0d9488; --c-shift: #d97706; --c-xai: #db2777;
+  --c-drift: #7c3aed; --c-analysis: #16a34a; --c-gen: #0284c7; --c-write: #475569; --c-risk: #dc2626;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+  --sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --sec: var(--c-shift);
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0a0f1e; --surface: #111831; --surface-2: #18213d; --text: #e7eaf6; --muted: #9aa4c0;
+  --border: #253055; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  --c-setup: #818cf8; --c-base: #2dd4bf; --c-shift: #fbbf24; --c-xai: #f472b6;
+  --c-drift: #a78bfa; --c-analysis: #4ade80; --c-gen: #38bdf8; --c-write: #94a3b8; --c-risk: #f87171;
+}}
+:root[data-theme="dark"] {
+  --bg: #0a0f1e; --surface: #111831; --surface-2: #18213d; --text: #e7eaf6; --muted: #9aa4c0;
+  --border: #253055; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  --c-setup: #818cf8; --c-base: #2dd4bf; --c-shift: #fbbf24; --c-xai: #f472b6;
+  --c-drift: #a78bfa; --c-analysis: #4ade80; --c-gen: #38bdf8; --c-write: #94a3b8; --c-risk: #f87171;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 16px; line-height: 1.65; -webkit-font-smoothing: antialiased; }
+a { color: var(--c-shift); }
+code, .mono { font-family: var(--mono); font-size: .88em; }
+.wrap { max-width: 920px; margin: 0 auto; padding: 0 16px; }
+section { padding: 44px 0 4px; }
+h1, h2, h3 { line-height: 1.2; margin: 0 0 .5em; }
+h2 { font-size: clamp(1.3rem, 3vw, 1.7rem); font-weight: 800; letter-spacing: -.01em; display: flex; align-items: center; gap: .6rem; }
+h2 .num { font-size: .78rem; font-weight: 700; color: #fff; background: var(--sec); border-radius: 8px; padding: 4px 9px; }
+h3 { font-size: 1.05rem; font-weight: 700; margin-top: 1.2em; }
+p { margin: .6em 0; }
+.lead { color: var(--muted); max-width: 760px; }
+.topbar { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+.topbar .wrap { display: flex; align-items: center; gap: 12px; height: 54px; }
+.topbar a.back { color: var(--muted); text-decoration: none; font-weight: 600; font-size: .9rem; }
+.topbar a.back:hover { color: var(--text); }
+.spacer { flex: 1; }
+.theme-btn { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 10px; width: 36px; height: 36px; cursor: pointer; font-size: 1rem; }
+.hero { padding: 48px 0 20px; position: relative; overflow: hidden; }
+.hero::before { content: ""; position: absolute; inset: -40% -10% auto -10%; height: 380px; z-index: -1;
+  background: radial-gradient(40% 60% at 20% 30%, color-mix(in srgb, var(--c-shift) 26%, transparent), transparent 70%), radial-gradient(35% 55% at 80% 20%, color-mix(in srgb, var(--c-risk) 16%, transparent), transparent 70%); filter: blur(12px); }
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--c-shift); }
+.chip { font-size: .72rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--c-analysis); color: #fff; }
+.hero h1 { font-size: clamp(1.7rem, 4.5vw, 2.6rem); font-weight: 800; letter-spacing: -.02em; margin: 12px 0 10px; }
+.hero h1 .grad { background: linear-gradient(90deg, var(--c-shift), var(--c-risk)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 18px; color: var(--muted); font-size: .9rem; margin-top: 10px; }
+.meta b { color: var(--text); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; box-shadow: var(--shadow); margin: 14px 0; }
+.card.accent { border-left: 4px solid var(--sec); }
+.grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.g4 { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.tag { display: inline-block; font-size: .7rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--c); background: color-mix(in srgb, var(--c) 13%, transparent); padding: 3px 8px; border-radius: 6px; }
+.stat { text-align: left; } .stat .v { font-size: 1.9rem; font-weight: 800; color: var(--c, var(--c-shift)); letter-spacing: -.02em; } .stat .l { color: var(--muted); font-size: .86rem; }
+.callout { --c: var(--c-shift); border-left: 4px solid var(--c); background: color-mix(in srgb, var(--c) 9%, var(--surface)); border-radius: 12px; padding: 12px 16px; margin: 14px 0; font-size: .95rem; }
+.callout strong { color: var(--c); }
+.table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); box-shadow: var(--shadow); margin: 12px 0; }
+table { border-collapse: collapse; width: 100%; min-width: 480px; font-size: .9rem; }
+th, td { padding: 10px 13px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { background: var(--surface-2); font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+td.big { font-weight: 700; color: var(--c-risk); }
+ul.clean { list-style: none; padding: 0; margin: .5em 0; }
+ul.clean li { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; border-bottom: 1px dashed var(--border); font-size: .94rem; }
+ul.clean li:last-child { border-bottom: 0; }
+ul.clean .ic { flex: none; color: var(--c-analysis); font-weight: 800; }
+.fam { border-radius: 12px; border: 1px solid var(--border); padding: 14px 16px; background: var(--surface); box-shadow: var(--shadow); border-top: 4px solid var(--c); }
+.fam h3 { margin: 0 0 6px; color: var(--c); font-size: 1rem; }
+.fam .items { color: var(--muted); font-size: .9rem; }
+.diagram { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; box-shadow: var(--shadow); overflow-x: auto; margin: 12px 0; }
+.diagram svg { display: block; width: 100%; height: auto; min-width: 480px; }
+svg text { font-family: var(--sans); fill: var(--text); } svg .mut { fill: var(--muted); }
+.legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: .85rem; color: var(--muted); margin-top: 8px; }
+.legend span::before { content: ""; display: inline-block; width: 14px; height: 3px; border-radius: 2px; margin-right: 6px; vertical-align: middle; background: var(--c); }
+footer { margin-top: 48px; padding: 24px 0 44px; border-top: 1px solid var(--border); color: var(--muted); font-size: .86rem; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="back" href="roadmap.html">← Roadmap</a>
+    <div class="spacer"></div>
+    <span class="chip">DONE</span>
+    <button class="theme-btn" id="themeBtn" aria-label="Toggle theme">◐</button>
+  </div>
+</header>
+
+<main>
+<div class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Stage 2 · Week 3 · difficulty 5/10</div>
+    <h1>Distribution <span class="grad">Shift</span></h1>
+    <p class="lead">Real-world images aren't clean. This stage feeds the trained model blurred, noisy, foggy and compressed versions of the test set, and measures how far its accuracy falls. That fall <em>is</em> the distribution shift the whole project studies.</p>
+    <div class="meta">
+      <span><b>Deliverable:</b> verified corruption benchmark</span>
+      <span><b>Dataset:</b> CIFAR-10-C</span>
+      <span><b>Conditions:</b> 75</span>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- AT A GLANCE -->
+<section>
+  <div class="grid g4">
+    <div class="card stat" style="--c:var(--c-shift)"><div class="v">15</div><div class="l">corruption types</div></div>
+    <div class="card stat" style="--c:var(--c-shift)"><div class="v">5</div><div class="l">severity levels each</div></div>
+    <div class="card stat" style="--c:var(--c-shift)"><div class="v">75</div><div class="l">conditions (15 × 5)</div></div>
+    <div class="card stat" style="--c:var(--c-shift)"><div class="v">~2.9 GB</div><div class="l">benchmark download</div></div>
+  </div>
+</section>
+
+<!-- WHAT IS SHIFT -->
+<section>
+  <h2><span class="num">1</span> What is distribution shift?</h2>
+  <p class="lead">A model is trained on clean images and tested on clean images. But once deployed, the images it meets are often degraded — a dirty camera lens, low light, fog, JPEG artefacts. The input <em>distribution</em> has shifted away from what the model learned.</p>
+  <p>The danger isn't just that accuracy drops — it's that the model can stay <b>confident while being wrong</b>. This project is ultimately about catching those silent failures, and to study them we first need a controlled, repeatable way to shift the images.</p>
+</section>
+
+<!-- CIFAR-10-C -->
+<section>
+  <h2><span class="num">2</span> CIFAR-10-C — a corruption benchmark</h2>
+  <p class="lead">CIFAR-10-C is the standard benchmark for this (Hendrycks &amp; Dietterich, 2019). It takes the 10,000 clean CIFAR-10 test images and applies 15 algorithmic corruptions, each at 5 increasing severities.</p>
+  <div class="diagram">
+    <svg viewBox="0 0 760 120" role="img" aria-label="One clean image corrupted at five increasing severities.">
+      <g font-size="12" text-anchor="middle">
+        <rect x="20" y="30" width="80" height="60" rx="8" fill="color-mix(in srgb,var(--c-base) 20%,var(--surface))" stroke="var(--c-base)"/><text x="60" y="64" font-weight="700">clean</text>
+        <g>
+          <rect x="150" y="30" width="80" height="60" rx="8" fill="color-mix(in srgb,var(--c-shift) 10%,var(--surface))" stroke="var(--c-shift)"/><text x="190" y="58" font-weight="700">sev 1</text><text x="190" y="74" class="mut" font-size="10">mild</text>
+          <rect x="270" y="30" width="80" height="60" rx="8" fill="color-mix(in srgb,var(--c-shift) 20%,var(--surface))" stroke="var(--c-shift)"/><text x="310" y="64" font-weight="700">sev 2</text>
+          <rect x="390" y="30" width="80" height="60" rx="8" fill="color-mix(in srgb,var(--c-shift) 32%,var(--surface))" stroke="var(--c-shift)"/><text x="430" y="64" font-weight="700">sev 3</text>
+          <rect x="510" y="30" width="80" height="60" rx="8" fill="color-mix(in srgb,var(--c-shift) 46%,var(--surface))" stroke="var(--c-shift)"/><text x="550" y="64" font-weight="700">sev 4</text>
+          <rect x="630" y="30" width="80" height="60" rx="8" fill="color-mix(in srgb,var(--c-shift) 62%,var(--surface))" stroke="var(--c-shift)"/><text x="670" y="58" font-weight="700">sev 5</text><text x="670" y="74" class="mut" font-size="10">severe</text>
+        </g>
+      </g>
+    </svg>
+    <p style="color:var(--muted);font-size:.85rem;margin:8px 0 0">Each corruption file holds all 50,000 images (the 10,000 test images × 5 severities), stored as a NumPy array. The label of a corrupted image is the same as its clean original.</p>
+  </div>
+</section>
+
+<!-- FAMILIES -->
+<section>
+  <h2><span class="num">3</span> The 15 corruptions, in 4 families</h2>
+  <p class="lead">The corruptions group into four families. This grouping is what the study's <b>leave-one-family-out</b> test later holds out, to check whether findings generalise to an <em>unseen</em> kind of corruption.</p>
+  <div class="grid">
+    <div class="fam" style="--c:var(--c-shift)"><h3>Noise</h3><div class="items">gaussian · shot · impulse</div></div>
+    <div class="fam" style="--c:var(--c-base)"><h3>Blur</h3><div class="items">defocus · glass · motion · zoom</div></div>
+    <div class="fam" style="--c:var(--c-gen)"><h3>Weather</h3><div class="items">snow · frost · fog · brightness</div></div>
+    <div class="fam" style="--c:var(--c-drift)"><h3>Digital</h3><div class="items">contrast · elastic · pixelate · jpeg</div></div>
+  </div>
+</section>
+
+<!-- VERIFICATION -->
+<section>
+  <h2><span class="num">4</span> How the benchmark was verified</h2>
+  <p class="lead">"Verified" means more than "the download finished". Before trusting any later result, four checks confirmed the data is sound — from cheapest to most important.</p>
+  <ul class="clean">
+    <li><span class="ic">1</span><span><b>All files present</b> — every one of the 15 corruption files plus <code>labels.npy</code>. ✓</span></li>
+    <li><span class="ic">2</span><span><b>Right shape &amp; type</b> — each corruption is a (50000, 32, 32, 3) array of 0–255 bytes. ✓</span></li>
+    <li><span class="ic">3</span><span><b>Labels aligned</b> — CIFAR-10-C's labels match the clean CIFAR-10 test order, at every severity. <b>This is the critical one.</b> ✓</span></li>
+    <li><span class="ic">4</span><span><b>Severity really increases</b> — the average pixel distance from the clean image grows with severity (8.0 → 19.5). ✓</span></li>
+    <li><span class="ic">5</span><span><b>The model degrades smoothly</b> — accuracy falls monotonically as severity rises (below). ✓</span></li>
+  </ul>
+  <div class="callout" style="--c:var(--c-risk)"><strong>Why check #3 matters most:</strong> a corrupted cat must still be labelled "cat". If the labels were out of order, every accuracy number afterwards would be measured against the wrong answers — silently meaningless. Confirming alignment is the one check you cannot skip.</div>
+</section>
+
+<!-- RESULTS -->
+<section>
+  <h2><span class="num">5</span> Results — the accuracy collapse</h2>
+  <p class="lead">Running seed 0 across the severities shows exactly the degradation the project is built to study. And different corruptions bite very differently — noise is brutal, fog is gentle.</p>
+  <div class="diagram">
+    <svg viewBox="0 0 640 290" role="img" aria-label="Accuracy vs severity: gaussian noise drops from 94 to 26 percent; fog stays high, from 94 to 71 percent.">
+      <!-- axes -->
+      <g stroke="var(--border)" stroke-width="1">
+        <line x1="80" y1="30" x2="80" y2="240"/><line x1="80" y1="240" x2="610" y2="240"/>
+        <line x1="80" y1="187.5" x2="610" y2="187.5" stroke-dasharray="3 4"/><line x1="80" y1="135" x2="610" y2="135" stroke-dasharray="3 4"/><line x1="80" y1="82.5" x2="610" y2="82.5" stroke-dasharray="3 4"/>
+      </g>
+      <g font-size="11" class="mut" text-anchor="end">
+        <text x="72" y="244">0%</text><text x="72" y="191">25%</text><text x="72" y="139">50%</text><text x="72" y="86">75%</text><text x="72" y="34">100%</text>
+      </g>
+      <g font-size="11" class="mut" text-anchor="middle">
+        <text x="80" y="258">clean</text><text x="184" y="258">sev 1</text><text x="288" y="258">sev 2</text><text x="392" y="258">sev 3</text><text x="496" y="258">sev 4</text><text x="600" y="258">sev 5</text>
+      </g>
+      <!-- gaussian_noise: (0,93.9)(1,77.1)(2,57.4)(3,38.0)(4,32.0)(5,26.4) ; y=240-acc*2.1 -->
+      <polyline fill="none" stroke="var(--c-shift)" stroke-width="3" points="80,43 184,78 288,119 392,160 496,173 600,185"/>
+      <g fill="var(--c-shift)"><circle cx="80" cy="43" r="4"/><circle cx="184" cy="78" r="4"/><circle cx="288" cy="119" r="4"/><circle cx="392" cy="160" r="4"/><circle cx="496" cy="173" r="4"/><circle cx="600" cy="185" r="4"/></g>
+      <text x="600" y="178" font-size="11" font-weight="700" fill="var(--c-shift)" text-anchor="end">26%</text>
+      <!-- fog: (0,94)(1,95.1)(3,91.6)(5,71.1) -->
+      <polyline fill="none" stroke="var(--c-gen)" stroke-width="3" points="80,42 184,40 392,48 600,91"/>
+      <g fill="var(--c-gen)"><circle cx="80" cy="42" r="4"/><circle cx="184" cy="40" r="4"/><circle cx="392" cy="48" r="4"/><circle cx="600" cy="91" r="4"/></g>
+      <text x="600" y="85" font-size="11" font-weight="700" fill="var(--c-gen)" text-anchor="end">71%</text>
+    </svg>
+    <div class="legend"><span style="--c:var(--c-shift)">gaussian noise (collapses)</span><span style="--c:var(--c-gen)">fog (resists)</span></div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>gaussian_noise</th><th>Clean</th><th>Sev 1</th><th>Sev 2</th><th>Sev 3</th><th>Sev 4</th><th>Sev 5</th></tr></thead>
+      <tbody>
+        <tr><td>Accuracy</td><td>93.9%</td><td>77.1%</td><td>57.4%</td><td>38.0%</td><td>32.0%</td><td class="big">26.4%</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>From <b>94% down to 26%</b> under heavy noise — the model is now wrong three times out of four. That gap between "confident on clean data" and "mostly wrong under shift" is the exact territory the heatmap-drift question lives in.</p>
+</section>
+
+<!-- DELIVERED -->
+<section>
+  <h2><span class="num">6</span> What Stage 2 delivered</h2>
+  <ul class="clean">
+    <li><span class="ic">✓</span><span>CIFAR-10-C downloaded (~2.9 GB) and extracted to <code>data/CIFAR-10-C/</code>.</span></li>
+    <li><span class="ic">✓</span><span>All five integrity checks passed — labels aligned, severities ordered, accuracy degrades smoothly.</span></li>
+    <li><span class="ic">✓</span><span>Code: <code>src/verify_cifar10c.py</code> (the checker) and the corruption families in <code>src/data.py</code>.</span></li>
+  </ul>
+  <div class="callout" style="--c:var(--c-shift)"><strong>Next → Stage 3 (Week 4):</strong> now that the model can be made to fail, draw the heatmaps that show <em>where it looked</em> for each prediction. See the <a href="roadmap.html">full roadmap</a>, or the <a href="stage1.html">Stage 1 write-up</a>.</div>
+</section>
+
+</div>
+</main>
+
+<footer>
+  <div class="wrap">Stage 2 · Distribution Shift · Explainable AI Under Distribution Shift · benchmark: CIFAR-10-C (Hendrycks &amp; Dietterich, 2019).</div>
+</footer>
+
+<script>
+(function () {
+  var root = document.documentElement, btn = document.getElementById('themeBtn');
+  try { var s = localStorage.getItem('roadmap-theme'); if (s) root.setAttribute('data-theme', s); } catch (e) {}
+  btn.addEventListener('click', function () {
+    var cur = root.getAttribute('data-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    var next = cur === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('roadmap-theme', next); } catch (e) {}
+  });
+})();
+</script>
+</body>
+</html>
